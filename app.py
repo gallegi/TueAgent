@@ -1,6 +1,7 @@
 import streamlit as st
 import random
 import time
+from typing import Sequence
 
 from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -32,11 +33,25 @@ Summarize into a single command or question:
 """
 )
 
+def messages_to_history_str(messages: Sequence[ChatMessage]) -> str:
+    """Convert messages to a history string."""
+    string_messages = []
+    for message in messages:
+        role = message.role
+        content = message.content
+        string_message = f"{role.value}: {content}"
+
+        additional_kwargs = message.additional_kwargs
+        if additional_kwargs:
+            string_message += f"\n{additional_kwargs}"
+        string_messages.append(string_message)
+    return "\n".join(string_messages)
+
 @st.cache_resource
 def get_query_engine():
     # Create a database session object that points to the URL.
     Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-base-en-v1.5")
-    Settings.llm = Ollama(model="llama3.2:1b", request_timeout=360.0)
+    Settings.llm = Ollama(model="llama3.2:3b", request_timeout=360.0)
 
     # rebuild storage context
     PERSIST_DIR = "./storage"
@@ -46,24 +61,16 @@ def get_query_engine():
     index = load_index_from_storage(storage_context)
 
     query_engine = index.as_query_engine(streaming=True, similarity_top_k=5)
-
-    chat_engine = CondenseQuestionChatEngine.from_defaults(
-            query_engine=query_engine,
-            condense_question_prompt=custom_prompt,
-            # chat_history=st.session_state.messages,
-            verbose=True,
-        )
     
-    return chat_engine
+    return query_engine
 
-chat_engine = get_query_engine()
-
+query_engine = get_query_engine()
 
 # Streamed response emulator
 def response_generator(prompt):
-    # response = query_engine.query(prompt)
-    response = chat_engine.stream_chat(prompt, 
-                                       chat_history=st.session_state.messages)
+    hist = messages_to_history_str(st.session_state.messages)
+    full_prompt = hist + "\nuser: " + prompt
+    response = query_engine.query(full_prompt)
 
     for word in response.response_gen:
         yield word
