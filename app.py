@@ -3,14 +3,20 @@ import random
 import time
 from typing import Sequence
 
+import fitz
+import os
+import uuid
+from collections import defaultdict
+
 from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
-from llama_index.core import PromptTemplate
-from llama_index.core.llms import ChatMessage, MessageRole
-from llama_index.core.chat_engine import CondenseQuestionChatEngine 
 from llama_index.core import StorageContext, load_index_from_storage
+from llama_index.core.llms import ChatMessage, MessageRole
 
+from agent import messages_to_history_str, CustomRetriverQueryEngine
+
+import base64
 import logging
 import sys
 
@@ -20,38 +26,15 @@ if LOGGING:
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
     logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
-custom_prompt = PromptTemplate(
-    """
-<Chat History>
-{chat_history}
 
-<Current Question>
-{question}
+st.set_page_config(layout="wide")
 
-Summarize into a single command or question:
-<Stand-alone Question>
-"""
-)
-
-def messages_to_history_str(messages: Sequence[ChatMessage]) -> str:
-    """Convert messages to a history string."""
-    string_messages = []
-    for message in messages:
-        role = message.role
-        content = message.content
-        string_message = f"{role.value}: {content}"
-
-        additional_kwargs = message.additional_kwargs
-        if additional_kwargs:
-            string_message += f"\n{additional_kwargs}"
-        string_messages.append(string_message)
-    return "\n".join(string_messages)
 
 @st.cache_resource
 def get_query_engine():
     # Create a database session object that points to the URL.
     Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-base-en-v1.5")
-    Settings.llm = Ollama(model="llama3.2:3b", request_timeout=360.0)
+    Settings.llm = Ollama(model="llama3.2:1b", request_timeout=360.0)
 
     # rebuild storage context
     PERSIST_DIR = "./storage"
@@ -61,10 +44,64 @@ def get_query_engine():
     index = load_index_from_storage(storage_context)
 
     query_engine = index.as_query_engine(streaming=True, similarity_top_k=5)
+
+    # kwargs = dict(streaming=True, similarity_top_k=5)
+    # query_engine = CustomRetriverQueryEngine.from_args(retriever=index.as_retriever(**kwargs),
+    #                                                 llm=Settings.llm,
+    #                                                 **kwargs)
     
     return query_engine
 
 query_engine = get_query_engine()
+
+# print(query_engine)
+# print(query_engine.retriever)
+# print(query_engine._response_synthesizer)
+
+# exit()
+
+import fitz  # PyMuPDF
+import base64
+
+def pdf_page_text_to_base64(pdf_path, page_number):
+    # Open the PDF file
+    pdf_document = fitz.open(pdf_path)
+    
+    # Ensure the page number is within range
+    if page_number < 0 or page_number >= pdf_document.page_count:
+        raise ValueError("Page number out of range")
+    
+    # Extract text from the specified page
+    page = pdf_document[page_number]
+    # text = page.get_text("text")  # Extract text content as plain text
+    
+    # Encode the text as base64
+    text_base64 = base64.b64encode(text.encode("utf-8")).decode("utf-8")
+    
+    return text_base64
+
+os.makedirs("tmp/", exist_ok=True)
+
+def read_and_concat_pdf(retrieved_pdf_data):
+    # Create a new PDF for output
+    new_document = fitz.open()
+
+    for input_pdf_path, pages_to_extract in retrieved_pdf_data.items():
+        # Open the input PDF
+        document = fitz.open(input_pdf_path)
+        
+        # Loop through the specified pages and extract them
+        for page_num in pages_to_extract:
+            if page_num < len(document):
+                # Extract the page and append it to the new document
+                new_document.insert_pdf(document, from_page=page_num, to_page=page_num)
+            else:
+                print(f"Page {page_num} does not exist in the document.")
+
+        document.close()
+
+    return new_document
+    
 
 # Streamed response emulator
 def response_generator(prompt):
@@ -72,43 +109,105 @@ def response_generator(prompt):
     full_prompt = hist + "\nuser: " + prompt
     response = query_engine.query(full_prompt)
 
-    for word in response.response_gen:
-        yield word
-        time.sleep(0.05)
+    print(response.source_nodes)
 
+    retrieved_pdf_data = defaultdict(set)
+    for node in response.source_nodes:
+        print(node.metadata)
+        # print("Text:", node.text)
+        pdf_file_path = node.metadata['file_path'] 
+        page_num = int(node.metadata['page_label'])
+        retrieved_pdf_data[pdf_file_path].add(page_num)
 
-st.title("Simple chat")
+    # Save the new PDF to the specified path
+    new_document = read_and_concat_pdf(retrieved_pdf_data)
+
+    new_document.save(f"tmp/{st.session_state['session_id']}_tmp_result.pdf")
+
+    new_document.close()
+
+    with col3:
+        st.subheader("Retrieved content")
+        pdf_file_path = f"tmp/{st.session_state['session_id']}_tmp_result.pdf" 
+        # pdf_viewer(pdf_file_path)
+        with open(pdf_file_path, "rb") as f:
+            base64_pdf = base64.b64encode(f.read()).decode("utf-8")
+        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="120%" height="1000" type="application/pdf"></iframe>'
+        st.markdown(pdf_display, unsafe_allow_html=True)
+
+        for word in response.response_gen:
+            yield word
+            time.sleep(0.05)
+
 
 # Initialize chat history
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display chat messages from history on app rerun
-for message in st.session_state.messages:
-    with st.chat_message(message.role):
-        st.markdown(message.content)
+if 'session_id' not in st.session_state:
+    # Generate a unique session ID
+    st.session_state.session_id = str(uuid.uuid4())
 
-# Accept user input
-if prompt := st.chat_input("What is up?"):
-    # Display user message in chat message container
-    with st.chat_message("user"):
-        st.markdown(prompt)
+# Create two columns: left for chat, right for PDF viewer
+col2, col3 = st.columns([5, 5], gap='medium', )
 
-    # Display assistant response in chat message container
-    with st.chat_message("assistant"):
-        response = st.write_stream(response_generator(prompt))
-    
-    # Add user message to chat history
-    st.session_state.messages.append(
-        ChatMessage(
-                role=MessageRole.USER,
-                content=prompt,
-            )
-    )
-    # Add assistant response to chat history
-    st.session_state.messages.append(
-        ChatMessage(
-                role=MessageRole.ASSISTANT,
-                content=response,
-            )
-    )
+# Sidebar (left side)
+st.sidebar.title("Sidebar")
+st.sidebar.write("You can put settings or information here.")
+
+with col2:
+    # st.title("Simple Chat with PDF Query Viewer")
+
+    # Display chat messages from history on app rerun
+    for message in st.session_state.messages:
+        with st.chat_message(message.role):
+            st.markdown(message.content)
+
+    # Accept user input
+    if prompt := st.chat_input("What is up?"):
+        # Display user message in chat message container
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # Display assistant response in chat message container
+        with st.chat_message("assistant"):
+            response = st.write_stream(response_generator(prompt))
+        
+        # Add user message to chat history
+        st.session_state.messages.append(
+            ChatMessage(
+                    role=MessageRole.USER,
+                    content=prompt,
+                )
+        )
+        # Add assistant response to chat history
+        st.session_state.messages.append(
+            ChatMessage(
+                    role=MessageRole.ASSISTANT,
+                    content=response,
+                )
+        )
+
+def change_chatbot_style():
+    # Set style of chat input so that it shows up at the bottom of the column
+    chat_input_style = f"""
+    <style>
+        .stChatInput {{
+          position: fixed;
+          bottom: 3rem;
+        }}
+    </style>
+    """
+    st.markdown(chat_input_style, unsafe_allow_html=True)
+
+change_chatbot_style()
+
+
+# with col3:
+#     st.subheader("Retrieved content")
+#     pdf_file_path = "data/ProbML2024_Macke_05_Regression_I.pdf"  # Replace with your PDF path
+#     # pdf_viewer(pdf_file_path)
+#     with open(pdf_file_path, "rb") as f:
+#         base64_pdf = base64.b64encode(f.read()).decode("utf-8")
+#     pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="120%" height="1000" type="application/pdf"></iframe>'
+#     st.markdown(pdf_display, unsafe_allow_html=True)
