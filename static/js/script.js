@@ -59,6 +59,14 @@ function toggleMenu() {
     document.querySelector('.navbar-links').classList.toggle('show');
 }
 
+function displayPDF(pdfFilePath) {
+    // Get the PDF viewer element
+    const pdfViewer = document.getElementById('pdf-viewer');
+
+    // Set the src attribute to display the PDF
+    pdfViewer.src = pdfFilePath;
+}
+
 // Fetch and display directory structure
 async function fetchDirectoryStructure() {
     const response = await fetch('/categories');
@@ -108,28 +116,21 @@ async function fetchDirectoryStructure() {
             toggleIcon.textContent = isVisible ? '▶' : '▼';
         }
 
-        function displayPDF(activeItem) {
-            const parent = activeItem.parentElement.parentElement;
-            const folder = parent.querySelector('.folder-name').textContent;
-            console.log(folder);
-
-            // Construct the PDF file path
-            const pdfFilePath = "/pdf/" + folder + "/" + activeItem.textContent;
-
-            // Get the PDF viewer element
-            const pdfViewer = document.getElementById('pdf-viewer');
-
-            // Set the src attribute to display the PDF
-            pdfViewer.src = pdfFilePath;
-        }
-
         function setActiveItem(item) {
             if (activeItem) activeItem.classList.remove('active');
             item.classList.add('active');
             activeItem = item;
 
             if (activeItem.classList.contains('file-item')) {
-                displayPDF(activeItem);
+                const parent = activeItem.parentElement.parentElement;
+                const folder = parent.querySelector('.folder-name').textContent;
+                console.log(folder);
+
+                // Construct the PDF file path
+                const pdfFilePath = "/pdf/" + folder + "/" + activeItem.textContent;
+                
+                // Display the PDF file
+                displayPDF(pdfFilePath);
             }
             
         }
@@ -236,12 +237,23 @@ async function uploadFiles() {
     }
 }
 
+function getUserId() {
+    let userId = localStorage.getItem('userId');
+    if (!userId) {
+        userId = crypto.randomUUID();  // Generates a random UUID
+        localStorage.setItem('userId', userId);
+    }
+    return userId;
+}
+
 // Handle chat message sending
 async function sendMessage() {
     const inputField = document.getElementById("chat-input");
     const message = inputField.value.trim();
+    user_id = getUserId();
+    console.log(JSON.stringify({ message, user_id }));
     if (message) {
-        addMessageToChat(message, "user");
+        addMessageToChat(message, "user");  // Show user message in the chat
         inputField.value = "";
 
         try {
@@ -250,13 +262,40 @@ async function sendMessage() {
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({ message })
+                body: JSON.stringify({ message, user_id })
             });
 
             if (!response.ok) throw new Error("Network response was not ok");
+            
+            // Create a message element for the bot's response
+            const botMessageElem = addMessageToChat("", "bot");
 
-            const data = await response.json();
-            addMessageToChat(data.message, "bot");
+            // Stream the response
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            
+            pdf_being_set = false;
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                // Decode the chunk and replace newlines with <br> for HTML display
+                const chunk = decoder.decode(value, { stream: true });
+                botMessageElem.innerHTML += chunk.replace(/\n/g, "<br>");
+                
+                // Auto-scroll to the bottom as new content is added
+                const chatMessages = document.getElementById("chat-messages");
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                if (pdf_being_set == false) {
+                    // Display the retrieved PDF data
+                    const pdfFilePath = "/pdf_tmp/" + user_id + "_tmp_result.pdf";
+                    // Display the PDF file
+                    displayPDF(pdfFilePath);
+                    pdf_being_set = true;
+                }
+            }
+
         } catch (error) {
             console.error("Error sending message:", error);
             addMessageToChat("Error: Could not send message.", "bot");
@@ -275,9 +314,10 @@ function addMessageToChat(message, sender) {
     const chatMessages = document.getElementById("chat-messages");
     const messageElem = document.createElement("div");
     messageElem.classList.add("message", sender === "user" ? "user-message" : "bot-message");
-    messageElem.textContent = message;
+    messageElem.innerHTML = message.replace(/\n/g, "<br>");  // Use innerHTML with <br> for newlines
     chatMessages.appendChild(messageElem);
     chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to the bottom
+    return messageElem;  // Return the message element to update it in real-time
 }
 
 // Fetch directory structure on page load
