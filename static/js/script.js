@@ -124,7 +124,6 @@ async function fetchDirectoryStructure() {
             if (activeItem.classList.contains('file-item')) {
                 const parent = activeItem.parentElement.parentElement;
                 const folder = parent.querySelector('.folder-name').textContent;
-                console.log(folder);
 
                 // Construct the PDF file path
                 const pdfFilePath = "/pdf/" + folder + "/" + activeItem.textContent;
@@ -148,7 +147,7 @@ async function fetchDirectoryStructure() {
 let preloadedCategories = [];
 async function fetchCategories() {
     try {
-        const response = await fetch("http://127.0.0.1:8000/categories");
+        const response = await fetch("/categories");
         if (response.ok) {
             const data = await response.json();
             preloadedCategories = Object.keys(data['directory_structure']);
@@ -217,7 +216,7 @@ async function uploadFiles() {
     Array.from(fileInput.files).forEach(file => formData.append("files", file));
 
     try {
-        const response = await fetch("http://127.0.0.1:8000/upload", {
+        const response = await fetch("/upload", {
             method: "POST",
             body: formData,
         });
@@ -251,13 +250,12 @@ async function sendMessage() {
     const inputField = document.getElementById("chat-input");
     const message = inputField.value.trim();
     user_id = getUserId();
-    console.log(JSON.stringify({ message, user_id }));
     if (message) {
         addMessageToChat(message, "user");  // Show user message in the chat
         inputField.value = "";
 
         try {
-            const response = await fetch("http://127.0.0.1:8000/chat_reply", {
+            const response = await fetch("/chat_reply", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"

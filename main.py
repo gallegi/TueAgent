@@ -43,6 +43,7 @@ os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 PERSIST_DIR = "./search_index_storage"
 
 TMP_DIR = "tmp" # Directory to save temporary files (retrieved PDFs)
+os.makedirs(TMP_DIR, exist_ok=True)
 
 SESSION_COOKIE_NAME = "session_id"
 
@@ -53,7 +54,7 @@ class RAGAgent:
         self.tmp_dir = tmp_dir
 
         Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-base-en-v1.5")
-        Settings.llm = Ollama(model="llama3.2:1b", request_timeout=360.0)
+        Settings.llm = Ollama(model="llama3.1", request_timeout=360.0)
 
         self.search_index = self._load_or_create_index()
 
@@ -138,8 +139,6 @@ class RAGAgent:
         # Store the updated index ascynchronously
         self.search_index.storage_context.persist(persist_dir=self.index_persisted_dir)
 
-agent = RAGAgent(PERSIST_DIR, UPLOAD_DIRECTORY, TMP_DIR)
-
 
 @app.post("/upload")
 async def upload_files(files: List[UploadFile] = File(...), category: str = Form(...)):
@@ -207,4 +206,5 @@ async def read_index():
 
 if __name__ == "__main__":
     import uvicorn
+    agent = RAGAgent(PERSIST_DIR, UPLOAD_DIRECTORY, TMP_DIR)
     uvicorn.run(app, host="localhost", port=8000) 
