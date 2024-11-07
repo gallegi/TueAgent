@@ -32,7 +32,6 @@ st.set_page_config(layout="wide")
 
 @st.cache_resource
 def get_query_engine():
-    # Create a database session object that points to the URL.
     Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-base-en-v1.5")
     Settings.llm = Ollama(model="llama3.2:1b", request_timeout=360.0)
 
@@ -43,7 +42,8 @@ def get_query_engine():
     # load index
     index = load_index_from_storage(storage_context)
 
-    query_engine = index.as_query_engine(streaming=True, similarity_top_k=5)
+    # query_engine = index.as_query_engine(streaming=True, similarity_top_k=5)
+    query_engine = index.as_retriever( similarity_top_k=10)
 
     # kwargs = dict(streaming=True, similarity_top_k=5)
     # query_engine = CustomRetriverQueryEngine.from_args(retriever=index.as_retriever(**kwargs),
@@ -54,7 +54,7 @@ def get_query_engine():
 
 query_engine = get_query_engine()
 
-# print(query_engine)
+print(query_engine)
 # print(query_engine.retriever)
 # print(query_engine._response_synthesizer)
 
@@ -87,6 +87,17 @@ def read_and_concat_pdf(retrieved_pdf_data):
     new_document = fitz.open()
 
     for input_pdf_path, pages_to_extract in retrieved_pdf_data.items():
+        pages_to_extract = sorted(pages_to_extract)
+
+        # increase continuity of pages_to_extract
+        # new_pages_to_extract = set()
+        # margin = 1
+        # for i, page_num in enumerate(pages_to_extract): 
+        #     for offset in range(-margin, margin+1):
+        #         if page_num + offset < 0:
+        #             continue
+        #         new_pages_to_extract.add(page_num + offset)        
+            
         # Open the input PDF
         document = fitz.open(input_pdf_path)
         
@@ -107,16 +118,19 @@ def read_and_concat_pdf(retrieved_pdf_data):
 def response_generator(prompt):
     hist = messages_to_history_str(st.session_state.messages)
     full_prompt = hist + "\nuser: " + prompt
-    response = query_engine.query(full_prompt)
+    # response = query_engine.query(full_prompt)
+    print("Prompt:", prompt)
+    retrieved_nodes = query_engine.retrieve(prompt)
 
-    print(response.source_nodes)
+    # print(response.source_nodes)
 
     retrieved_pdf_data = defaultdict(set)
-    for node in response.source_nodes:
+    for node in retrieved_nodes:
+        print(node)
         print(node.metadata)
         # print("Text:", node.text)
         pdf_file_path = node.metadata['file_path'] 
-        page_num = int(node.metadata['page_label'])
+        page_num = int(node.metadata['page_index'])
         retrieved_pdf_data[pdf_file_path].add(page_num)
 
     # Save the new PDF to the specified path
@@ -135,9 +149,9 @@ def response_generator(prompt):
         pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="120%" height="1000" type="application/pdf"></iframe>'
         st.markdown(pdf_display, unsafe_allow_html=True)
 
-        for word in response.response_gen:
-            yield word
-            time.sleep(0.05)
+    # for word in response.response_gen:
+    #     yield word
+    #     time.sleep(0.05)
 
 
 # Initialize chat history
@@ -171,7 +185,8 @@ with col2:
 
         # Display assistant response in chat message container
         with st.chat_message("assistant"):
-            response = st.write_stream(response_generator(prompt))
+            # response = st.write_stream(response_generator(prompt))
+            response_generator(prompt)
         
         # Add user message to chat history
         st.session_state.messages.append(
@@ -181,12 +196,12 @@ with col2:
                 )
         )
         # Add assistant response to chat history
-        st.session_state.messages.append(
-            ChatMessage(
-                    role=MessageRole.ASSISTANT,
-                    content=response,
-                )
-        )
+        # st.session_state.messages.append(
+        #     ChatMessage(
+        #             role=MessageRole.ASSISTANT,
+        #             content=response,
+        #         )
+        # )
 
 def change_chatbot_style():
     # Set style of chat input so that it shows up at the bottom of the column
