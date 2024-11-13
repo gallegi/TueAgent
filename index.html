@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web Page with Nav, Sidebar, Expandable Directory, and Chat</title>
     <link rel="stylesheet" type="text/css" href="/static/css/style.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
@@ -20,7 +21,7 @@
 
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
-        <h2>Directory Structure</h2>
+        <h2>Directory</h2>
         <ul id="directory-structure">
         </ul>
     </div>
@@ -46,7 +47,7 @@
 
         <!-- Document Viewer -->
         <div class="document-viewer">
-            <h2>Document Viewer</h2>
+            <h2>Retrieved documents</h2>
             <div class="document-container" id="document-container">
                 <!-- Documents will appear here -->
                  <iframe id="pdf-viewer" width="100%" height="100%"></iframe>

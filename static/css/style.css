@@ -312,3 +312,11 @@ body {
     border: 1px solid #b2ebf2;
     padding: 2px;
 }
+
+pre {
+    border: 2px solid #ccc; /* border color */
+    padding: 10px;          /* spacing inside the border */
+    border-radius: 5px;     /* rounded corners */
+    background-color: #f9f9f9; /* subtle background for clarity */
+    overflow-x: auto;       /* enables horizontal scrolling */
+  }

@@ -58,7 +58,7 @@ class RAGAgent:
         self.search_index = self._load_or_create_index()
 
         # Load the query engine to retrieve relevant documents
-        self.search_engine = self.search_index.as_retriever( similarity_top_k=10)
+        self.search_engine = self.search_index.as_retriever( similarity_top_k=5)
 
         self.response_synthesizer = get_response_synthesizer(response_mode="compact", streaming=True)
 
@@ -106,15 +106,20 @@ class RAGAgent:
             yield chunk
             time.sleep(0.05)
     
-    def save_retrieved_pdf_data(self, retrieved_nodes, session_id):
-        retrieved_pdf_data = defaultdict(set)
+    def save_retrieved_pdf_data(self, retrieved_nodes, session_id, min_score=0.6):
+        retrieved_pdf_data = defaultdict(list)
         for node in retrieved_nodes:
-            # print(node)
+            if node.score < min_score:
+                continue
             # print(node.metadata)
             # print("Text:", node.text)
+            print(node)
             pdf_file_path = node.metadata['file_path'] 
             page_num = int(node.metadata['page_index'])
-            retrieved_pdf_data[pdf_file_path].add(page_num)
+            retrieved_pdf_data[pdf_file_path].append(page_num)
+            print(page_num)
+
+        print(retrieved_pdf_data)
 
         # Save the new PDF to the specified path
         new_document = read_and_concat_pdf(retrieved_pdf_data)

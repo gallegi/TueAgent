@@ -148,7 +148,7 @@ async function fetchDirectoryStructure() {
 let preloadedCategories = [];
 async function fetchCategories() {
     try {
-        const response = await fetch("http://127.0.0.1:8000/categories");
+        const response = await fetch("/categories");
         if (response.ok) {
             const data = await response.json();
             preloadedCategories = Object.keys(data['directory_structure']);
@@ -252,10 +252,12 @@ async function sendMessage() {
     const message = inputField.value.trim();
     user_id = getUserId();
     console.log(JSON.stringify({ message, user_id }));
+    var res = "";
+
     if (message) {
         addMessageToChat(message, "user");  // Show user message in the chat
         inputField.value = "";
-
+        
         try {
             const response = await fetch("http://127.0.0.1:8000/chat_reply", {
                 method: "POST",
@@ -275,13 +277,18 @@ async function sendMessage() {
             const decoder = new TextDecoder("utf-8");
             
             pdf_being_set = false;
+            
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
                 // Decode the chunk and replace newlines with <br> for HTML display
                 const chunk = decoder.decode(value, { stream: true });
-                botMessageElem.innerHTML += chunk.replace(/\n/g, "<br>");
+                // botMessageElem.innerHTML += chunk.replace(/\n/g, "<br>");
+                
+                res += chunk;
+                botMessageElem.innerHTML =  marked.parse(res)
+                console.log( marked.parse(res));
                 
                 // Auto-scroll to the bottom as new content is added
                 const chatMessages = document.getElementById("chat-messages");
@@ -314,7 +321,8 @@ function addMessageToChat(message, sender) {
     const chatMessages = document.getElementById("chat-messages");
     const messageElem = document.createElement("div");
     messageElem.classList.add("message", sender === "user" ? "user-message" : "bot-message");
-    messageElem.innerHTML = message.replace(/\n/g, "<br>");  // Use innerHTML with <br> for newlines
+    // messageElem.innerHTML = message.replace(/\n/g, "<br>");  // Use innerHTML with <br> for newlines
+    messageElem.innerHTML = marked.parse(message)
     chatMessages.appendChild(messageElem);
     chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to the bottom
     return messageElem;  // Return the message element to update it in real-time

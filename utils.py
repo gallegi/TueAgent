@@ -28,7 +28,7 @@ def read_and_concat_pdf(retrieved_pdf_data, target_size=(595, 842)):
     target_size = ()
 
     for input_pdf_path, pages_to_extract in retrieved_pdf_data.items():
-        pages_to_extract = sorted(pages_to_extract)
+        # pages_to_extract = sorted(pages_to_extract)
         
         # Open the input PDF
         document = fitz.open(input_pdf_path)
