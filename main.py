@@ -37,6 +37,7 @@ os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 PERSIST_DIR = "./search_index_storage"
 
 TMP_DIR = "tmp" # Directory to save temporary files (retrieved PDFs)
+os.makedirs(TMP_DIR, exist_ok=True)
 
 agent = RAGAgent(PERSIST_DIR, UPLOAD_DIRECTORY, TMP_DIR)
 
@@ -117,4 +118,5 @@ async def read_index():
 
 if __name__ == "__main__":
     import uvicorn
+    agent = RAGAgent(PERSIST_DIR, UPLOAD_DIRECTORY, TMP_DIR)
     uvicorn.run(app, host="localhost", port=8000) 

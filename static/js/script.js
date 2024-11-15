@@ -124,7 +124,6 @@ async function fetchDirectoryStructure() {
             if (activeItem.classList.contains('file-item')) {
                 const parent = activeItem.parentElement.parentElement;
                 const folder = parent.querySelector('.folder-name').textContent;
-                console.log(folder);
 
                 // Construct the PDF file path
                 const pdfFilePath = "/pdf/" + folder + "/" + activeItem.textContent;
@@ -221,7 +220,7 @@ async function uploadFiles() {
     preloader.style.display = "block";
 
     try {
-        const response = await fetch("http://127.0.0.1:8000/upload", {
+        const response = await fetch("/upload", {
             method: "POST",
             body: formData,
         });
@@ -266,7 +265,7 @@ async function sendMessage() {
         inputField.value = "";
         
         try {
-            const response = await fetch("http://127.0.0.1:8000/chat_reply", {
+            const response = await fetch("/chat_reply", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
