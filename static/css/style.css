@@ -264,14 +264,69 @@ body {
     margin-bottom: 1rem;
 }
 
+.category-input {
+    width: 80%; /* 80% of the parent container's width */
+    height: 2.5rem; /* Relative height for visibility */
+    padding: 0.5rem; /* Padding for better readability */
+    font-size: 0.8rem; /* Consistent font size */
+    border: 2px solid #ccc; /* Light border */
+    border-radius: 5px; /* Rounded corners */
+    outline: none; /* Removes the default outline */
+    transition: border-color 0.3s ease; /* Smooth transition for focus */
+    margin-bottom: 1rem; /* Spacing between input and buttons */
+    margin-top: 1rem; /* Spacing between input and previous elements */
+}
+
+.category-input:focus {
+    border-color: #007bff; /* Changes border color to blue on focus */
+}
+
+.upload-btn {
+    background: #4990dc; /* Blue background */
+    color: white; /* White text */
+    border: 3px solid #4990dc; /* Solid blue border */
+    font-size: 1rem;
+    border-radius: 10%;
+}
+
 .close-btn {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    cursor: pointer;
+    background: black; /* Black background */
+    color: white; /* White text */
+    border: 3px solid black; /* Solid black border */
+    font-size: 1rem;
+    border-radius: 10%;
+}
+
+/* Preloader styles */
+.preloader {
+    display: none;
+    width: 100%;
+    background-color: #f3f3f3;
+    border: 1px solid #ccc;
+    margin-top: 10px;
+    position: relative;
+    height: 20px;
+    overflow: hidden;
+    border-radius: 5px;
+}
+
+.preloader-bar {
+    width: 0;
+    height: 100%;
+    background-color: #4caf50;
+    animation: loading 2s infinite;
+}
+
+@keyframes loading {
+    0% {
+        width: 0;
+    }
+    50% {
+        width: 100%;
+    }
+    100% {
+        width: 0;
+    }
 }
 
 .modal-content input[type="file"] {
@@ -319,4 +374,12 @@ pre {
     border-radius: 5px;     /* rounded corners */
     background-color: #f9f9f9; /* subtle background for clarity */
     overflow-x: auto;       /* enables horizontal scrolling */
-  }
+}
+
+p {
+    line-height: 1.6; 
+}
+
+.chat-messages li {
+    line-height: 1.6; /* Match the line-height of <p> elements */
+}

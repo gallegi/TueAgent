@@ -58,15 +58,19 @@
     <!-- Upload Modal -->
     <div class="modal" id="upload-modal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeModal()">×</button>
+            <!-- <button class="close-btn" onclick="closeModal()">XXXX</button> -->
             <h2>Upload Documents</h2>
             <form id="file-upload-form" enctype="multipart/form-data">
-                <label for="category">Select or Create Category:</label>
-                <input type="text" id="category" oninput="filterCategories()" placeholder="Type to search or create a category" required />
+                <label for="category">Select or create a new category:</label>
+                <input type="text" id="category" oninput="filterCategories()" class="category-input" 
+                        placeholder="Type to search or create new" required />
                 <ul id="category-suggestions" class="suggestions"></ul>
                 <input type="file" name="files" id="files" multiple required />
-                <button type="button" onclick="uploadFiles()">Upload</button>
-                <button type="button" onclick="closeModal()">Cancel</button>
+                <button type="button" class="upload-btn" onclick="uploadFiles()">Upload</button>
+                <button type="button" class="close-btn" onclick="closeModal()">Cancel</button>
+                <div id="preloader" class="preloader">
+                    <div class="preloader-bar"></div>
+                </div>
             </form>
         </div>
     </div>

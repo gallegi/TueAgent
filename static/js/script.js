@@ -216,6 +216,10 @@ async function uploadFiles() {
     formData.append("category", selectedCategory);
     Array.from(fileInput.files).forEach(file => formData.append("files", file));
 
+    // Show preloader
+    const preloader = document.getElementById("preloader");
+    preloader.style.display = "block";
+
     try {
         const response = await fetch("http://127.0.0.1:8000/upload", {
             method: "POST",
@@ -234,6 +238,9 @@ async function uploadFiles() {
     } catch (error) {
         console.error("Error uploading files:", error);
         alert("Error uploading files.");
+    } finally {
+        // Hide preloader
+        preloader.style.display = "none";
     }
 }
 
@@ -252,7 +259,7 @@ async function sendMessage() {
     const message = inputField.value.trim();
     user_id = getUserId();
     console.log(JSON.stringify({ message, user_id }));
-    var res = "";
+    var answer = "";
 
     if (message) {
         addMessageToChat(message, "user");  // Show user message in the chat
@@ -286,9 +293,9 @@ async function sendMessage() {
                 const chunk = decoder.decode(value, { stream: true });
                 // botMessageElem.innerHTML += chunk.replace(/\n/g, "<br>");
                 
-                res += chunk;
-                botMessageElem.innerHTML =  marked.parse(res)
-                console.log( marked.parse(res));
+                answer += chunk;
+                botMessageElem.innerHTML =  marked.parse(answer)
+                // console.log( marked.parse(answer));
                 
                 // Auto-scroll to the bottom as new content is added
                 const chatMessages = document.getElementById("chat-messages");
@@ -301,7 +308,18 @@ async function sendMessage() {
                     displayPDF(pdfFilePath);
                     pdf_being_set = true;
                 }
+
             }
+            
+            const update_hist_response = await fetch("http://127.0.0.1:8000/update_chat_history", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body:  JSON.stringify({ "message": answer, "user_id": user_id })
+            });
+            
+            if (!update_hist_response.ok) throw new Error("Update chat history failed");
 
         } catch (error) {
             console.error("Error sending message:", error);

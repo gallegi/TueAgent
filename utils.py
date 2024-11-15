@@ -14,7 +14,6 @@ def read_and_concat_pdf(retrieved_pdf_data, target_size=(595, 842)):
     # Create a new PDF for output
     new_document = fitz.open()
     
-
     # increase continuity of pages_to_extract
         # new_pages_to_extract = set()
         # margin = 1
@@ -64,3 +63,7 @@ def read_and_concat_pdf(retrieved_pdf_data, target_size=(595, 842)):
         document.close()
 
     return new_document
+
+
+def convert_message_list_to_str(messages):
+    return "\n".join([f"{message.role}: {message.content}" for message in messages])
